@@ -12,13 +12,18 @@ public:
 	//	@param
 	//		width : width of picture size
 	//		height: height of picture size
+	RealSenseCVWrapper();
 	RealSenseCVWrapper(int width, int height);
 	~RealSenseCVWrapper();
+	void safeRelease();
 
-	//	query RealSense stream
+	//	query RealSense frames
+	//	you should execute queryStream() function before get buffers
+	//	and releaseFrames(); function after all by every frame
 	//	@return
-	//		true = stream is succcessfully queried
-	bool queryStream();
+	//		true = frame is succcessfully queried
+	bool queryFrames();
+	void releaseFrames();
 
 	//	get camera buffers
 	void getColorBuffer();
@@ -31,8 +36,26 @@ public:
 	void getMappedDepthBuffer(cv::Mat &mappedDepth);
 	void getMappedColorBuffer(cv::Mat &mappedColor);
 	void getXYZBuffer(cv::Mat &xyz);
-	
+
+	//	adjust camera settings
+	//	@param
+	//		use_aa: flag to use auto exposure and auto white balance
+	void useAutoAdjust(bool use_aa);
+	//	set RGB camera exposure
+	//	@param
+	//		value: exposure time = 2 ^ value [s]
+	//		       if you want 30fps you should set under 33 ~ 2 ^ -5 [ms]
+	void setExposure(int32_t value);
+	//	set RGB camera white balance
+	//	@param
+	//		value: white point = value [K]
+	//		       (ex: D65 standard light source = about 6500[K])
+	void setWhiteBalance(int32_t value);
+
 	//	get calibration status
+	//	 - camera matrix
+	//	 - distortion parameters
+	//	 - transform matrix (RGB camera origin to depth camera origin)
 	void getCalibrationStatus();
 
 	//	OpenCV image buffer
@@ -51,6 +74,5 @@ public:
 protected:
 	Intel::RealSense::SenseManager *rsm;
 	Intel::RealSense::Sample *sample;
-
 };
 

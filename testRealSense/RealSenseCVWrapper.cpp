@@ -5,6 +5,10 @@ using namespace cv;
 using namespace std;
 
 
+RealSenseCVWrapper::RealSenseCVWrapper()
+{
+}
+
 RealSenseCVWrapper::RealSenseCVWrapper(int w = 640, int h = 480)
 {
 	rsm = SenseManager::CreateInstance();
@@ -21,15 +25,25 @@ RealSenseCVWrapper::RealSenseCVWrapper(int w = 640, int h = 480)
 
 RealSenseCVWrapper::~RealSenseCVWrapper()
 {
-	rsm->Release();
+	safeRelease();
 }
 
-bool RealSenseCVWrapper::queryStream()
+void RealSenseCVWrapper::safeRelease()
+{
+	if (rsm) rsm->Release();
+}
+
+bool RealSenseCVWrapper::queryFrames()
 {
 	if (rsm->AcquireFrame(true) < Status::STATUS_NO_ERROR) {
 		return false;
 	}
 	sample = rsm->QuerySample();
+}
+
+void RealSenseCVWrapper::releaseFrames()
+{
+	rsm->ReleaseFrame();
 }
 
 void RealSenseCVWrapper::getColorBuffer()
@@ -43,8 +57,10 @@ void RealSenseCVWrapper::getColorBuffer()
 	colorBuffer = Mat(cinfo.height, cinfo.width, CV_8UC3);
 	//	copy data
 	colorBuffer.data = data_c.planes[0];
+	colorBuffer = colorBuffer.clone();
 	//	release access
 	img_c->ReleaseAccess(&data_c);
+	img_c->Release();
 }
 
 void RealSenseCVWrapper::getDepthBuffer()
@@ -55,7 +71,9 @@ void RealSenseCVWrapper::getDepthBuffer()
 	Image::ImageInfo dinfo = img_d->QueryInfo();
 	depthBuffer = Mat(dinfo.height, dinfo.width, CV_32FC1);
 	depthBuffer.data = data_d.planes[0];
+	depthBuffer = depthBuffer.clone();
 	img_d->ReleaseAccess(&data_d);
+	img_d->Release();
 }
 
 void RealSenseCVWrapper::getMappedDepthBuffer()
@@ -70,8 +88,11 @@ void RealSenseCVWrapper::getMappedDepthBuffer()
 	Image::ImageInfo dinfo = depth_mapped->QueryInfo();
 	depthBufferMapped = Mat(dinfo.height, dinfo.width, CV_32FC1);
 	depthBufferMapped.data = ddata_mapped.planes[0];
+	depthBufferMapped = depthBufferMapped.clone();
 	//	release access
 	depth_mapped->ReleaseAccess(&ddata_mapped);
+	depth_mapped->Release();
+	projection->Release();
 }
 
 void RealSenseCVWrapper::getMappedColorBuffer()
@@ -86,8 +107,11 @@ void RealSenseCVWrapper::getMappedColorBuffer()
 	Image::ImageInfo cinfo = color_mapped->QueryInfo();
 	colorBufferMapped = Mat(cinfo.height, cinfo.width, CV_8UC3);
 	colorBufferMapped.data = cdata_mapped.planes[0];
+	colorBufferMapped = colorBufferMapped.clone();
 	//	release access
 	color_mapped->ReleaseAccess(&cdata_mapped);
+	color_mapped->Release();
+	projection->Release();
 }
 
 void RealSenseCVWrapper::getXYZBuffer()
@@ -121,34 +145,53 @@ void RealSenseCVWrapper::getMappedColorBuffer(cv::Mat & mappedColor)
 	mappedColor = colorBufferMapped.clone();
 }
 
+void RealSenseCVWrapper::useAutoAdjust(bool use_aa)
+{
+	Device *device = rsm->QueryCaptureManager()->QueryDevice();
+	//	get current values if you use manual mode
+	device->SetColorAutoExposure(use_aa);
+	device->SetColorAutoWhiteBalance(use_aa);
+}
+
+void RealSenseCVWrapper::setExposure(int32_t value)
+{
+	rsm->QueryCaptureManager()->QueryDevice()->SetColorExposure(value);
+}
+
+void RealSenseCVWrapper::setWhiteBalance(int32_t value)
+{
+	rsm->QueryCaptureManager()->QueryDevice()->SetColorWhiteBalance(value);
+}
+
 void RealSenseCVWrapper::getCalibrationStatus()
 {
 	//	aquire calibration data of RGB camera stream
 	Projection * projection = rsm->QueryCaptureManager()->QueryDevice()->CreateProjection();
-	Calibration::StreamCalibration *calib;
-	Calibration::StreamTransform *trans;
+	Calibration::StreamCalibration calib;
+	Calibration::StreamTransform trans;
 	projection->QueryCalibration()
-		->QueryStreamProjectionParameters(StreamType::STREAM_TYPE_COLOR, calib, trans);
+		->QueryStreamProjectionParameters(StreamType::STREAM_TYPE_COLOR, &calib, &trans);
 
 	//	copy RGB camera calibration data to OpenCV
 	cameraMatrix = Mat::eye(3, 3, CV_32FC1);
-	cameraMatrix.at<float>(0, 0) = calib->focalLength.x;
-	cameraMatrix.at<float>(1, 1) = calib->focalLength.y;
-	cameraMatrix.at<float>(0, 2) = calib->principalPoint.x;
-	cameraMatrix.at<float>(1, 2) = calib->principalPoint.y;
+	cameraMatrix.at<float>(0, 0) = calib.focalLength.x;
+	cameraMatrix.at<float>(1, 1) = calib.focalLength.y;
+	cameraMatrix.at<float>(0, 2) = calib.principalPoint.x;
+	cameraMatrix.at<float>(1, 2) = calib.principalPoint.y;
 
 	distCoeffs = Mat::zeros(5, 1, CV_32FC1);
-	distCoeffs.at<float>(0) = calib->radialDistortion[0];
-	distCoeffs.at<float>(1) = calib->radialDistortion[1];
-	distCoeffs.at<float>(2) = calib->tangentialDistortion[0];
-	distCoeffs.at<float>(3) = calib->tangentialDistortion[1];
-	distCoeffs.at<float>(4) = calib->radialDistortion[2];
+	distCoeffs.at<float>(0) = calib.radialDistortion[0];
+	distCoeffs.at<float>(1) = calib.radialDistortion[1];
+	distCoeffs.at<float>(2) = calib.tangentialDistortion[0];
+	distCoeffs.at<float>(3) = calib.tangentialDistortion[1];
+	distCoeffs.at<float>(4) = calib.radialDistortion[2];
 
 	transform = Mat::eye(4, 4, CV_32FC1);
 	for (int i = 0; i < 3; i++) {
 		for (int j = 0; j < 3; j++) {
-			transform.at<float>(i, j) = trans->rotation[i][j];		//	todo: rotationの行と列の順を確認
+			transform.at<float>(i, j) = trans.rotation[i][j];		//	todo: rotationの行と列の順を確認
 		}
-		transform.at<float>(i, 3) = trans->translation[i];
+		transform.at<float>(i, 3) = trans.translation[i];
 	}
+	projection->Release();
 }
