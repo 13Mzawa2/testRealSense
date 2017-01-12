@@ -72,7 +72,7 @@ int main(void)
 	psm->EnableStream(Capture::STREAM_TYPE_COLOR, 640, 480);
 	psm->EnableStream(Capture::STREAM_TYPE_DEPTH, 640, 480);
 	psm->Init();
-	Session *session = psm->QuerySession();
+	//Session *session = psm->QuerySession();
 	
 	//	OpenCV frame buffer
 	//Mat frame_c(480, 640, CV_8UC3);		//	color frame
