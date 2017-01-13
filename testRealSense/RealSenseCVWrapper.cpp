@@ -117,8 +117,18 @@ void RealSenseCVWrapper::getMappedColorBuffer()
 void RealSenseCVWrapper::getXYZBuffer()
 {
 	Projection *projection = rsm->QueryCaptureManager()->QueryDevice()->CreateProjection();
-	
-	//Image *depth = projection->QueryVertices();
+	std::vector<Point3DF32> vertices;
+	vertices.resize(bufferSize.width * bufferSize.height);
+	projection->QueryVertices(sample->depth, &vertices[0]);
+	xyzBuffer.clear();
+	for (int i = 0; i < bufferSize.width*bufferSize.height; i++) {
+		Point3f p;
+		p.x = vertices[i].x;
+		p.y = vertices[i].y;
+		p.z = vertices[i].z;
+		xyzBuffer.push_back(p);
+	}
+	projection->Release();
 }
 
 void RealSenseCVWrapper::getColorBuffer(cv::Mat & color)
@@ -143,6 +153,12 @@ void RealSenseCVWrapper::getMappedColorBuffer(cv::Mat & mappedColor)
 {
 	getMappedColorBuffer();
 	mappedColor = colorBufferMapped.clone();
+}
+
+void RealSenseCVWrapper::getXYZBuffer(std::vector<cv::Point3f> xyz)
+{
+	getXYZBuffer();
+	xyz = xyzBuffer;
 }
 
 void RealSenseCVWrapper::useAutoAdjust(bool use_aa)

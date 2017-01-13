@@ -35,7 +35,7 @@ public:
 	void getDepthBuffer(cv::Mat &depth);
 	void getMappedDepthBuffer(cv::Mat &mappedDepth);
 	void getMappedColorBuffer(cv::Mat &mappedColor);
-	void getXYZBuffer(cv::Mat &xyz);
+	void getXYZBuffer(std::vector<cv::Point3f> xyz);
 
 	//	adjust camera settings
 	//	@param
