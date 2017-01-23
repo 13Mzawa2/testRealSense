@@ -13,12 +13,14 @@ RealSenseCVWrapper::RealSenseCVWrapper(int w = 640, int h = 480)
 {
 	rsm = SenseManager::CreateInstance();
 	if (!rsm) {
-		cout << "Unable to create PXCSenseManager" << endl;
+		cout << "Unable to create SenseManager" << endl;
 	}
 	//	RealSense settings
 	rsm->EnableStream(Capture::STREAM_TYPE_COLOR, w, h);
 	rsm->EnableStream(Capture::STREAM_TYPE_DEPTH, w, h);
-	rsm->Init();
+	if (rsm->Init() < Status::STATUS_NO_ERROR) {
+		cout << "Unable to initialize SenseManager" << endl;
+	}
 	bufferSize = Size(w, h);
 }
 
@@ -30,7 +32,10 @@ RealSenseCVWrapper::~RealSenseCVWrapper()
 
 void RealSenseCVWrapper::safeRelease()
 {
-	if (rsm) rsm->Release();
+	if (rsm) {
+		//rsm->Release();
+		rsm->Close();
+	}
 }
 
 bool RealSenseCVWrapper::queryFrames()
@@ -60,7 +65,7 @@ void RealSenseCVWrapper::getColorBuffer()
 	colorBuffer = colorBuffer.clone();
 	//	release access
 	img_c->ReleaseAccess(&data_c);
-	img_c->Release();
+	//img_c->Release();
 }
 
 void RealSenseCVWrapper::getDepthBuffer()
@@ -73,7 +78,7 @@ void RealSenseCVWrapper::getDepthBuffer()
 	depthBuffer.data = data_d.planes[0];
 	depthBuffer = depthBuffer.clone();
 	img_d->ReleaseAccess(&data_d);
-	img_d->Release();
+	//img_d->Release();
 }
 
 void RealSenseCVWrapper::getMappedDepthBuffer()

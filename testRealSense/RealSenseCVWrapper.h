@@ -64,7 +64,7 @@ public:
 	cv::Mat depthBuffer;		//	depth camera buffer (Gray, 32FC1)
 	cv::Mat colorBufferMapped;	//	RGB camera buffer mapped to depth camera (BGR, 8UC3)
 	cv::Mat depthBufferMapped;	//	depth camera buffer mapped to RGB camera (Gray, 32FC1)
-	std::vector<cv::Point3f> xyzBuffer;			//	XYZ point cloud buffer from depth camera (XYZ, 32FC3)
+	std::vector<cv::Point3f> xyzBuffer;			//	XYZ point cloud buffer from depth camera (XYZ)
 
 	//	RGB camera calibration data writtern by OpenCV camera model
 	cv::Mat cameraMatrix;		//	inclueds fx,fy,cx,cy

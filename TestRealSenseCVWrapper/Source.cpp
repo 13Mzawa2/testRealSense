@@ -17,9 +17,9 @@ int main(void)
 		cv::Mat src;
 		//	RealSenseのストリームを開始
 		rscv.queryFrames();
-		//rscv.getColorBuffer(src);
+		rscv.getColorBuffer(src);
 		//	デプス画像にマップしたカラー画像を取得
-		rscv.getMappedColorBuffer(src);
+		//rscv.getMappedColorBuffer(src);
 		//	頂点座標の勾配を推定して陰影表示
 		rscv.getXYZBuffer();
 		cv::Mat XYZImage(rscv.bufferSize, CV_32FC1);
